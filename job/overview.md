@@ -13,7 +13,6 @@ path includes 08 - Jobs
 
 ## Job Portals
 ---
-
 ```dataviewjs
 // offset in milliseconds
 var tzoffset = (new Date()).getTimezoneOffset() * 60000;
@@ -27,12 +26,12 @@ dv.table(["Company", "Last Checked", "Update"], dv.pages('"08 - Jobs"')
 	.where(p => dv.func.contains(p["tag-links"], dv.func.link("jobportal")))
 	.map(p => [
 		p.file.link,
-		moment(p.file.mtime.toISO()).from(now),
+		moment(p["modified"]).from(now),
 		// localISOTime - p.file.mtime.toISO().slice(0, -10).replace("T", " "),
 		dv.el("span", "Update", {
 		    cls: "edit-button",
 		    onclick: async () => {
-				console.log(p.file.mtime.toISO().slice(0, -10).replace("T", " "))
+				console.log(p["modified"].toISO().slice(0, -10).replace("T", " "))
 				const file = await app.vault.getAbstractFileByPath(p.file.path); 
 				if (file) {
 					const content = await app.vault.read(file);
@@ -45,7 +44,6 @@ dv.table(["Company", "Last Checked", "Update"], dv.pages('"08 - Jobs"')
 );
 ```
 
-
 ## Open Applications
 ---
 
@@ -55,16 +53,16 @@ rows[0].company AS Company,
 date[0] AS "Days since applying",
 rows[0].rows.job-title AS Job
 FROM "08 - Jobs"
-WHERE company
+WHERE company AND application-status = [[applied]]
 GROUP BY company
-GROUP BY map(rows, (r) => floor((date(now) - r.file.ctime).days)) AS date
+GROUP BY map(rows, (r) => floor((date(now) - date(split(r.created, " ")[0] + "T" + split(r.created, " ")[1])).days)) AS date
 ```
 
 
-*Job listing*:
+### Job listings
 
 ```dataview
-TABLE floor((date(now) - file.ctime).days) AS "Days since applying"
+TABLE floor((date(now) - date(split(created, " ")[0] + "T" + split(created, " ")[1])).days) AS "Days since applying"
 FROM "08 - Jobs"
 WHERE application-status = [[applied]]
 SORT file.ctime DESC
