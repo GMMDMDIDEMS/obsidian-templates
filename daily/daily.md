@@ -4,32 +4,37 @@ tag-links:
   - "[[daily]]"
 ---
 <%*
+const dailyNoteFolder = "06 - Daily";
+
 // get date from file title (see 'Daily Notes' Core Plugin Setting)
 const date = moment(tp.file.title)
 
-// manipulate yesterday date to build correct file path
-const yesterday = tp.date.yesterday('YYYY-MM-DD');
-const yesterdayStr = moment(yesterday);
-const yesterdayYear = yesterdayStr.format('YYYY');
-const yesterdayMonth = yesterdayStr.format('MMMM');
-
-// file path of yesterday's daily
-const dailyNoteFolder = "06 - Daily";
-const yesterdayPath = `${dailyNoteFolder}/${yesterdayYear}/${yesterdayMonth}/${yesterday}.md`;
+// function to get the latest file in a folder 
+async function getLatestFile(folderPath) {
+	const files = app.vault.getFiles().filter(file => file.path.startsWith(folderPath));
+	// rollover only works if there is more than one file
+	if (files.length <= 1) return null;
+	
+	// sort files by their creation date in descending order
+	const sortedFiles = files.sort((a, b) => b.stat.ctime - a.stat.ctime);
+	return sortedFiles[1]; // Return the latest file
+}
 
 // extract rollover elements (tasks and action plan)
 let rolloverTasks = "";
 let actionPlan = "";
-if (await app.vault.adapter.exists(yesterdayPath)) {
-  const yesterdayFile = await app.vault.adapter.read(yesterdayPath);
-  const lines = yesterdayFile.split('\n');
+
+const latestFile = await getLatestFile(`${dailyNoteFolder}/`);
+if (latestFile) { 
+  const latestFileContent = await app.vault.adapter.read(latestFile.path);
+  const lines = latestFileContent.split('\n');
   
   let inActionPlanTomorrow = false;
   
   for (let line of lines) {
     // "Action Plan for Tomorrow" defined?
-	if (line.match(/^## Action Plan for Tomorrow/)) { 
-	    inActionPlanTomorrow = true;
+	if (line.match(/^## Action Plan for Tomorrow/)) {
+		inActionPlanTomorrow = true;
 	    continue;
 	}
 	// start of new section/heading?
@@ -37,19 +42,21 @@ if (await app.vault.adapter.exists(yesterdayPath)) {
 		inActionPlanTomorrow = false;
 	}
 	// match 'action plan' lines starting with bullet points ("-" or "- [ ]")
-	if (inActionPlanTomorrow && line.match(/^\s*- (\[ \]|)/)) {
-		if (line.match(/^\s*- \[ \]/)) {
+	if (inActionPlanTomorrow && line.match(/- (?:\[ \] |\s*(?!\[ \]))\s*\S/)) {
+		if (line.match(/^- \[ \]/)) {
 			actionPlan += `${line.trim()}\n`;
 		} else {
 			// replace "-" (dash) with task bullet point ("- [ ]")
-			actionPlan += `${line.trim().replace(/^\s*- /, "- [ ] ")}\n`;
+			actionPlan += `${line.replace(/^- /, "- [ ] ")}\n`;
 		}
 	}
 	// match any line defining a task ("- [ ]"), not within the "Action Plan for Tomorrow" section
-	if (!inActionPlanTomorrow && line.match(/^\s*[-*] \[ \]/)) {
+	if (!inActionPlanTomorrow && line.match(/^\s*[-*] \[ \]\s*\S+/)) {
 		rolloverTasks += `${line.trim()}\n`;
 	}
   }
+} else {
+	console.log("Rollover not possible: No other daily file could be found. Please ensure there are previous daily notes available in the expected folder.");
 }
 %>
 # Daily - <%date.format("dddd, Do MMMM YYYY")%>
