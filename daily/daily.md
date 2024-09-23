@@ -10,7 +10,7 @@ const dailyNoteFolder = "06 - Daily";
 const date = moment(tp.file.title)
 
 // function to get the latest file in a folder 
-async function getLatestFile(folderPath) {
+async function getLatestFile(folderPath) { 
 	const files = app.vault.getFiles().filter(file => file.path.startsWith(folderPath));
 	// rollover only works if there is more than one file
 	if (files.length <= 1) return null;
@@ -33,8 +33,8 @@ if (latestFile) {
   
   for (let line of lines) {
     // "Action Plan for Tomorrow" defined?
-	if (line.match(/^## Action Plan for Tomorrow/)) {
-		inActionPlanTomorrow = true;
+	if (line.match(/^## Action Plan for Tomorrow/)) { 
+	    inActionPlanTomorrow = true;
 	    continue;
 	}
 	// start of new section/heading?
@@ -42,17 +42,17 @@ if (latestFile) {
 		inActionPlanTomorrow = false;
 	}
 	// match 'action plan' lines starting with bullet points ("-" or "- [ ]")
-	if (inActionPlanTomorrow && line.match(/- (?:\[ \] |\s*(?!\[ \]))\s*\S/)) {
-		if (line.match(/^- \[ \]/)) {
-			actionPlan += `${line.trim()}\n`;
+	if (inActionPlanTomorrow && line.match(/\s*- (?:\[ \] |\s*(?!\[ \]))\s*\S/)) {
+		if (line.match(/- \[ \]/)) {
+			actionPlan += `${line}\n`;
 		} else {
 			// replace "-" (dash) with task bullet point ("- [ ]")
-			actionPlan += `${line.replace(/^- /, "- [ ] ")}\n`;
+			actionPlan += `${line.replace(/- /, "- [ ] ")}\n`;
 		}
 	}
 	// match any line defining a task ("- [ ]"), not within the "Action Plan for Tomorrow" section
 	if (!inActionPlanTomorrow && line.match(/^\s*[-*] \[ \]\s*\S+/)) {
-		rolloverTasks += `${line.trim()}\n`;
+		rolloverTasks += `${line}\n`;
 	}
   }
 } else {
